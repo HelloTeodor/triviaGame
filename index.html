@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Monopoly Friends Game</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <!-- Background Music -->
+    <audio id="bg-audio" src="MonopolyMusic2.mp3" loop></audio>
+    <button id="play-btn">▶️ Play Music</button>
+    <!-- Background Music-->
+
+    <div class="app">
+      <div class="board" id="board">
+        <div class="center">DO YOU KNOW ME?</div>
+      </div>
+      <div class="controls">
+        <button id="start">Start Game</button>
+        <button id="roll" disabled>Roll Dice</button>
+      </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+      <h3>Players</h3>
+      <div id="players-list"></div>
+    </div>
+
+    <div class="popup" id="popup">
+      <div class="popup-content">
+        <p id="popup-question"></p>
+        <div>
+          <button id="correct">Correct</button>
+          <button id="wrong">Wrong</button>
+        </div>
+        <p id="timer"></p>
+      </div>
+    </div>
+
+    <div class="popup" id="winner-popup">
+      <div class="popup-content">
+        <h2 id="winner-text"></h2>
+        <button onclick="location.reload()">Restart Game</button>
+      </div>
+    </div>
+
+    <script>
+      const board = document.getElementById("board");
+      const startBtn = document.getElementById("start");
+      const rollBtn = document.getElementById("roll");
+      const popup = document.getElementById("popup");
+      const popupQuestion = document.getElementById("popup-question");
+      const timerEl = document.getElementById("timer");
+      const correctBtn = document.getElementById("correct");
+      const wrongBtn = document.getElementById("wrong");
+      const playersList = document.getElementById("players-list");
+      const winnerPopup = document.getElementById("winner-popup");
+      const winnerText = document.getElementById("winner-text");
+
+      let players = [];
+      let positions = [];
+      let tokens = [];
+      let scores = [];
+      let timer;
+      let currentPlayer = 0;
+      let rolledNumber = 0;
+      let gameOver = false;
+
+      const coords = [];
+      for (let c = 11; c >= 1; c--) coords.push([11, c]);
+      for (let r = 10; r >= 1; r--) coords.push([r, 1]);
+      for (let c = 2; c <= 11; c++) coords.push([1, c]);
+      for (let r = 2; r <= 10; r++) coords.push([r, 11]);
+
+      const categories = [
+        { name: "Personal History", color: "var(--cat1)" },
+        { name: "Favorites", color: "var(--cat2)" },
+        { name: "Personality & Habits", color: "var(--cat3)" },
+        { name: "Opinions & Beliefs", color: "var(--cat4)" },
+        { name: "Experiences & Adventures", color: "var(--cat5)" },
+        { name: "Social & Relationships", color: "var(--cat6)" },
+        { name: "Skills & Talents", color: "var(--cat7)" },
+        { name: "Random & Fun Facts", color: "var(--cat8)" },
+      ];
+
+      const questionTemplates = {
+        Favorites: [
+          "What is {name}'s favorite movie?",
+          "What is {name}'s favorite food?",
+          "What is {name}'s favorite song?",
+          "What is {name}'s favorite color?",
+          "What is {name}'s favorite book?",
+          "What is {name}'s favorite TV show?",
+          "What is {name}'s favorite video game?",
+          "What is {name}'s favorite sport?",
+          "What is {name}'s favorite holiday?",
+          "What is {name}'s favorite season?",
+          "What is {name}'s favorite dessert?",
+          "What is {name}'s favorite drink?",
+          "What is {name}'s favorite animal?",
+          "What is {name}'s favorite hobby?",
+          "What is {name}'s favorite place to visit?",
+          "What is {name}'s favorite city?",
+          "What is {name}'s favorite clothing brand?",
+          "What is {name}'s favorite restaurant?",
+          "What is {name}'s favorite fast food?",
+          "What is {name}'s favorite app?",
+          "What is {name}'s favorite social media platform?",
+          "What is {name}'s favorite car?",
+          "What is {name}'s favorite flower?",
+          "What is {name}'s favorite fruit?",
+          "What is {name}'s favorite vegetable?",
+          "What is {name}'s favorite candy?",
+          "What is {name}'s favorite ice cream flavor?",
+          "What is {name}'s favorite pizza topping?",
+          "What is {name}'s favorite snack?",
+          "What is {name}'s favorite breakfast food?",
+          "What is {name}'s favorite subject in school?",
+          "What is {name}'s favorite childhood cartoon?",
+          "What is {name}'s favorite superhero?",
+          "What is {name}'s favorite actor?",
+          "What is {name}'s favorite actress?",
+          "What is {name}'s favorite band?",
+          "What is {name}'s favorite singer?",
+          "What is {name}'s favorite type of music?",
+          "What is {name}'s favorite emoji?",
+          "What is {name}'s favorite board game?",
+          "What is {name}'s favorite card game?",
+          "What is {name}'s favorite movie genre?",
+          "What is {name}'s favorite TV genre?",
+          "What is {name}'s favorite outdoor activity?",
+          "What is {name}'s favorite indoor activity?",
+          "What is {name}'s favorite childhood toy?",
+          "What is {name}'s favorite app game?",
+          "What is {name}'s favorite clothing style?",
+          "What is {name}'s favorite guilty pleasure snack?",
+          "What is {name}'s favorite vacation destination?",
+        ],
+        "Personal History": [
+          "Where was {name} born?",
+          "What school did {name} attend?",
+          "What is a childhood memory of {name}?",
+          "What was {name}'s first job?",
+          "What was {name}'s favorite subject in school?",
+          "What childhood hobby did {name} enjoy most?",
+          "Did {name} have any pets growing up?",
+          "What is {name}'s earliest memory?",
+          "Where did {name} grow up?",
+          "What was {name}'s favorite toy as a child?",
+          "Who was {name}'s childhood best friend?",
+          "What is a funny childhood story about {name}?",
+          "What neighborhood did {name} grow up in?",
+          "Did {name} have any siblings?",
+          "What was {name}'s first trip outside their hometown?",
+          "What was {name}'s first memorable birthday party?",
+          "What is {name}'s favorite memory from school?",
+          "What was {name}'s favorite game as a child?",
+          "What was {name}'s favorite childhood food?",
+          "What sport or activity did {name} play as a kid?",
+          "Where did {name} go on family vacations?",
+          "What was {name}'s favorite TV show as a child?",
+          "What was {name}'s first memorable accomplishment?",
+          "What is a tradition {name} had as a child?",
+          "What was {name}'s first school like?",
+          "Did {name} have a childhood nickname?",
+          "What was {name}'s favorite storybook?",
+          "Who was {name}'s role model growing up?",
+          "What was {name}'s favorite holiday as a child?",
+          "Did {name} have a favorite teacher?",
+          "What was {name}'s first memorable pet?",
+          "What childhood fear did {name} have?",
+          "Did {name} have a favorite playground or park?",
+          "What was {name}'s favorite birthday gift ever?",
+          "What hobby or interest did {name} start early?",
+          "What is the first trip {name} remembers?",
+          "What childhood games did {name} love?",
+          "What was {name}'s first memorable school project?",
+          "Did {name} have a favorite music or band as a child?",
+          "What childhood skill did {name} learn?",
+          "What was {name}'s favorite childhood book?",
+          "What chores did {name} have growing up?",
+          "What embarrassing moment does {name} remember?",
+          "What was {name}'s favorite childhood meal?",
+          "What was {name}'s favorite playground activity?",
+          "Did {name} have a favorite sibling activity?",
+          "What childhood dream did {name} have?",
+          "What is a fun story from {name}'s early years?",
+          "What was {name}'s favorite childhood holiday tradition?",
+          "What was {name}'s first memorable challenge?",
+        ],
+        "Personality & Habits": [
+          "What habit does {name} have every morning?",
+          "What is {name}'s biggest pet peeve?",
+          "Is {name} an introvert or extrovert?",
+          "What is {name}'s favorite way to relax?",
+          "Does {name} prefer mornings or nights?",
+          "What is {name}'s stress-relief habit?",
+          "Is {name} more organized or messy?",
+          "What is a quirky habit of {name}?",
+          "Does {name} talk a lot or listen more?",
+          "What is {name}'s favorite routine?",
+          "Is {name} a perfectionist?",
+          "What is {name}'s sleeping habit?",
+          "Does {name} drink coffee, tea, or neither?",
+          "What is {name}'s morning ritual?",
+          "What is {name}'s favorite hobby?",
+          "Does {name} bite nails, twirl hair, or other habit?",
+          "Is {name} more spontaneous or planned?",
+          "What is {name}'s work/study habit?",
+          "Does {name} prefer indoors or outdoors?",
+          "What is {name}'s favorite type of music habitually?",
+          "Does {name} exercise regularly?",
+          "Is {name} a talker or a thinker?",
+          "Does {name} plan their week ahead?",
+          "What is {name}'s favorite app they check daily?",
+          "Does {name} have a habit of doodling or writing notes?",
+          "Does {name} procrastinate often?",
+          "Does {name} sing or hum habitually?",
+          "Does {name} check social media daily?",
+          "Is {name} an early riser or night owl?",
+          "Does {name} have a quirky eating habit?",
+          "What is {name}'s typical weekend routine?",
+          "Does {name} collect anything?",
+          "Does {name} have a habit of tapping or fidgeting?",
+          "Is {name} a habitual snacker?",
+          "What is {name}'s favorite form of exercise?",
+          "Does {name} read books regularly?",
+          "Does {name} have a routine before bed?",
+          "Is {name} more emotional or logical?",
+          "Does {name} enjoy planning or improvising?",
+          "What is {name}'s favorite daily beverage?",
+          "Does {name} have a habit of keeping a diary or journal?",
+          "Is {name} talkative in groups?",
+          "Does {name} have a habitual gesture?",
+          "Does {name} prefer routine or variety?",
+          "What is {name}'s most consistent daily activity?",
+          "Does {name} follow fashion trends?",
+          "Does {name} have a unique laugh or expression?",
+          "Is {name} punctual or often late?",
+          "Does {name} have a habit of checking emails/messages often?",
+          "Does {name} enjoy solitary time?",
+          "What is {name}'s favorite habit related to creativity?",
+          "Does {name} like to multitask or focus on one thing?",
+        ],
+        "Opinions & Beliefs": [
+          "What value is most important to {name}?",
+          "What is {name}'s favorite quote?",
+          "What is a topic {name} has strong opinions about?",
+          "Does {name} believe in fate or free will?",
+          "What is {name}'s political stance?",
+          "What is {name}'s opinion on technology?",
+          "Does {name} follow a religion or spiritual practice?",
+          "What is {name}'s moral stance on honesty?",
+          "What does {name} think about teamwork?",
+          "What is {name}'s view on success?",
+          "What philosophy does {name} admire most?",
+          "What is {name}'s favorite social cause?",
+          "Does {name} believe in luck or chance?",
+          "What is {name}'s stance on environmental issues?",
+          "What role model does {name} look up to?",
+          "What is {name}'s opinion on education?",
+          "What is {name}'s favorite ethical dilemma?",
+          "Does {name} trust people easily?",
+          "What is {name}'s opinion on money and wealth?",
+          "What is {name}'s favorite motivational quote?",
+          "What does {name} believe about love?",
+          "What is {name}'s view on personal freedom?",
+          "Does {name} believe in destiny?",
+          "What is {name}'s opinion on social media?",
+          "What is {name}'s favorite book about philosophy?",
+          "Does {name} believe in miracles?",
+          "What is {name}'s opinion on art?",
+          "Does {name} value tradition or innovation more?",
+          "What is {name}'s view on justice?",
+          "What is {name}'s stance on rules and authority?",
+          "Does {name} believe in second chances?",
+          "What is {name}'s opinion on family values?",
+          "What does {name} think about failure?",
+          "Does {name} value logic or intuition more?",
+          "What is {name}'s opinion on travel and culture?",
+          "What does {name} think about friendships?",
+          "What is {name}'s favorite quote about life?",
+          "Does {name} have a personal motto?",
+          "What is {name}'s opinion on happiness?",
+          "What is {name}'s stance on social justice?",
+          "What is {name}'s opinion about innovation?",
+          "What does {name} think about leadership?",
+          "Does {name} believe in self-improvement?",
+          "What is {name}'s favorite discussion topic?",
+          "What is {name}'s stance on honesty?",
+          "Does {name} follow a particular philosophy?",
+          "What is {name}'s opinion on teamwork vs individuality?",
+          "Does {name} value experience or education more?",
+          "What is {name}'s favorite debate topic?",
+          "What is {name}'s opinion on creativity?",
+          "Does {name} believe in karma?",
+          "What does {name} consider most important in life?",
+        ],
+        "Experiences & Adventures": [
+          "What is {name}'s proudest achievement?",
+          "What trip did {name} enjoy most?",
+          "What was a scary moment for {name}?",
+          "What is {name}'s most memorable experience?",
+          "Has {name} ever tried an extreme sport?",
+          "What is {name}'s first memorable adventure?",
+          "What is {name}'s most embarrassing experience?",
+          "What was {name}'s first concert or event?",
+          "Has {name} ever traveled abroad?",
+          "What is {name}'s most challenging experience?",
+          "What is {name}'s favorite childhood adventure?",
+          "Has {name} ever gotten lost on a trip?",
+          "What is {name}'s proudest accomplishment at school or work?",
+          "What is {name}'s most adventurous memory?",
+          "Has {name} ever done something daring?",
+          "What is {name}'s favorite memory with friends?",
+          "What is {name}'s first memorable holiday experience?",
+          "Has {name} ever faced a fear?",
+          "What is {name}'s proudest personal milestone?",
+          "What is {name}'s most exciting trip?",
+          "Has {name} ever won a competition?",
+          "What is {name}'s favorite travel memory?",
+          "What unusual activity has {name} tried?",
+          "Has {name} ever gone camping or hiking?",
+          "What was {name}'s first big challenge?",
+          "What is {name}'s most spontaneous adventure?",
+          "What accomplishment does {name} cherish most?",
+          "What is {name}'s favorite cultural experience?",
+          "Has {name} ever performed on stage?",
+          "What was {name}'s first achievement at work or school?",
+          "What is {name}'s proudest creative accomplishment?",
+          "Has {name} ever gone on a road trip?",
+          "What extreme challenge has {name} faced?",
+          "What was {name}'s first memorable travel experience?",
+          "What is {name}'s favorite outdoor adventure?",
+          "Has {name} ever learned a new skill for fun?",
+          "What was {name}'s first volunteer or charity experience?",
+          "What is {name}'s most exciting personal experience?",
+          "Has {name} ever tried something adventurous on a dare?",
+          "What is {name}'s most memorable school or work project?",
+          "What was {name}'s first big success?",
+          "Has {name} ever done a physical challenge like climbing or running?",
+          "What experience taught {name} an important lesson?",
+          "What is {name}'s most unusual adventure?",
+          "Has {name} ever gone on a memorable trip with friends?",
+          "What was {name}'s first major personal accomplishment?",
+          "What adventure made {name} happiest?",
+          "Has {name} ever tried an unusual food or activity while traveling?",
+          "What is {name}'s proudest family memory?",
+          "What is {name}'s most exciting challenge?",
+          "What travel experience does {name} remember most?",
+          "Has {name} ever faced a fear and succeeded?",
+        ],
+        "Social & Relationships": [
+          "Who is {name}'s best friend?",
+          "What is a fun memory {name} has with friends?",
+          "What is a meaningful gift {name} has given or received?",
+          "Who does {name} usually spend free time with?",
+          "What is {name}'s favorite family tradition?",
+          "Who does {name} admire most in their social circle?",
+          "What is {name}'s favorite memory with siblings?",
+          "Has {name} ever helped a friend in need?",
+          "What is {name}'s funniest memory with friends?",
+          "Who is {name}'s role model among friends or family?",
+          "Has {name} ever had a memorable party experience?",
+          "Who is {name}'s favorite colleague or classmate?",
+          "What is a surprising fact about {name}'s social life?",
+          "Who does {name} call first in a crisis?",
+          "What is {name}'s most cherished friendship moment?",
+          "Has {name} ever given a memorable gift?",
+          "What is {name}'s favorite way to celebrate with friends?",
+          "Who has influenced {name} the most socially?",
+          "What is {name}'s funniest interaction with family?",
+          "What was {name}'s first friend like?",
+          "Has {name} ever met a friend unexpectedly?",
+          "What is {name}'s favorite holiday memory with family?",
+          "Who does {name} usually confide in?",
+          "Has {name} ever organized a social event?",
+          "What is {name}'s most memorable gift received?",
+          "Who does {name} respect the most among friends?",
+          "Has {name} ever had a memorable team experience?",
+          "Who is {name}'s favorite neighbor or community member?",
+          "What is {name}'s favorite group activity?",
+          "Has {name} ever helped someone unexpectedly?",
+          "Who has been {name}'s longest friendship?",
+          "What is a funny habit {name} shares with friends?",
+          "Has {name} ever hosted a party or event?",
+          "Who does {name} usually meet during weekends?",
+          "What is {name}'s favorite childhood friend memory?",
+          "Has {name} ever reconciled after a disagreement?",
+          "Who does {name} consider their mentor socially?",
+          "What is {name}'s favorite outdoor activity with friends?",
+          "Who in {name}'s life is most supportive?",
+          "Has {name} ever received a memorable compliment?",
+          "What is {name}'s favorite volunteer or social activity?",
+          "Who does {name} usually seek advice from?",
+          "Has {name} ever traveled with friends or family?",
+          "What is {name}'s most memorable group adventure?",
+          "Who does {name} trust the most socially?",
+          "Has {name} ever made a surprise for someone?",
+          "What is {name}'s favorite bonding activity?",
+          "Who has had the biggest impact on {name}'s social life?",
+          "What is {name}'s funniest group story?",
+          "Has {name} ever supported someone in need?",
+          "Who does {name} enjoy spending holidays with?",
+          "What is {name}'s favorite friendship lesson learned?",
+        ],
+        "Skills & Talents": [
+          "What skill is {name} very good at?",
+          "What sport does {name} play?",
+          "Can {name} play a musical instrument?",
+          "What creative hobby does {name} enjoy?",
+          "Is {name} good at cooking or baking?",
+          "What language(s) can {name} speak?",
+          "Does {name} have any artistic talents?",
+          "Can {name} draw or paint well?",
+          "Is {name} good at problem-solving?",
+          "What technical skill does {name} have?",
+          "Can {name} dance or perform?",
+          "Is {name} good at memorization or learning?",
+          "What handcraft or DIY skill does {name} have?",
+          "Can {name} sing?",
+          "Is {name} good at sports or fitness?",
+          "What software or tool is {name} skilled at?",
+          "Does {name} have leadership skills?",
+          "What is {name}'s strongest talent?",
+          "Can {name} write creatively?",
+          "Is {name} good at math or numbers?",
+          "Does {name} have organizational skills?",
+          "Can {name} solve puzzles or riddles easily?",
+          "What is {name}'s hidden talent?",
+          "Is {name} good at memorizing facts or information?",
+          "Can {name} perform magic tricks?",
+          "What athletic skill does {name} have?",
+          "Can {name} sew or knit?",
+          "Is {name} good at public speaking?",
+          "What digital skill does {name} excel in?",
+          "Can {name} play chess or strategy games well?",
+          "Is {name} good at teaching or mentoring?",
+          "What musical talent does {name} have?",
+          "Does {name} have a skill others admire?",
+          "Can {name} code or program?",
+          "What artistic medium is {name} best at?",
+          "Can {name} fix things or repair objects?",
+          "Is {name} skilled at photography or videography?",
+          "Can {name} perform any acrobatics or stunts?",
+          "Is {name} skilled at memorizing songs or lines?",
+          "Does {name} have problem-solving talents?",
+          "Can {name} do mental calculations quickly?",
+          "Is {name} good at sports strategy?",
+          "What crafty skill does {name} have?",
+          "Can {name} improvise or create spontaneously?",
+          "Is {name} skilled at designing things?",
+          "What talent does {name} use most often?",
+          "Can {name} play any traditional games well?",
+          "Is {name} good at negotiating or persuading?",
+          "Does {name} have any unique skill?",
+          "What is {name}'s favorite skill to showcase?",
+          "Can {name} perform or entertain others?",
+          "What skill does {name} wish to improve?",
+        ],
+        "Random & Fun Facts": [
+          "What is a weird fear of {name}?",
+          "What nickname does {name} have?",
+          "What is a hidden talent of {name}?",
+          "What is {name}'s guilty pleasure?",
+          "What is {name}'s favorite meme?",
+          "What is a funny habit of {name}?",
+          "What is {name}'s weirdest talent?",
+          "What unusual collection does {name} have?",
+          "What is a childhood dream of {name}?",
+          "What is {name}'s favorite joke?",
+          "What is {name}'s lucky charm or object?",
+          "What is {name}'s favorite snack at night?",
+          "What is {name}'s weirdest fear?",
+          "What is {name}'s favorite emoji?",
+          "What is {name}'s favorite quirky item?",
+          "What is {name}'s favorite comic or cartoon?",
+          "Does {name} have a funny quirk?",
+          "What is {name}'s favorite hidden spot?",
+          "What is {name}'s favorite childhood game?",
+          "What is {name}'s favorite prank they pulled?",
+          "What unusual skill does {name} have?",
+          "What is {name}'s funniest memory?",
+          "What is a secret habit of {name}?",
+          "What nickname did {name} have as a child?",
+          "What is {name}'s favorite silly dance move?",
+          "What unusual dream did {name} have?",
+          "What is {name}'s favorite weird food combination?",
+          "What is {name}'s favorite random fact?",
+          "What is {name}'s favorite silly challenge?",
+          "What is {name}'s hidden obsession?",
+          "What is {name}'s favorite funny sound or word?",
+          "What is {name}'s most surprising talent?",
+          "What is {name}'s funniest mistake?",
+          "What is a weird hobby of {name}?",
+          "What unusual thing scares {name}?",
+          "What secret skill does {name} have?",
+          "What is {name}'s favorite playful nickname?",
+          "What is {name}'s favorite childhood toy?",
+          "What is a silly habit {name} has?",
+          "What is {name}'s weird favorite object?",
+          "What is {name}'s favorite playful joke?",
+          "What is {name}'s favorite funny expression?",
+          "What unusual sport or activity does {name} like?",
+          "What is {name}'s funniest story about themselves?",
+          "What quirky talent does {name} have?",
+          "What is {name}'s favorite playful challenge?",
+          "What is {name}'s weirdest childhood memory?",
+          "What is {name}'s favorite secret spot or hideout?",
+          "What is a funny habit {name} has when alone?",
+          "What is {name}'s favorite silly costume or outfit?",
+          "What is {name}'s most amusing nickname?",
+          "What is a weird fact about {name} that surprises others?",
+        ],
+      };
+
+      function buildBoard() {
+        const tiles = 40;
+        for (let i = 0; i < tiles; i++) {
+          const [row, col] = coords[i];
+          const tile = document.createElement("div");
+          tile.className = "tile";
+          tile.style.gridRow = row;
+          tile.style.gridColumn = col;
+          const cat = categories[i % categories.length];
+          tile.style.background = cat.color;
+          tile.textContent = cat.name.split(" ")[0];
+          board.appendChild(tile);
+        }
+      }
+
+      function updateTokenPosition(player) {
+        const [row, col] = coords[positions[player]];
+        const tileSize = board.clientWidth / 11;
+        const x =
+          (col - 1) * tileSize + tileSize / 2 - tokens[player].offsetWidth / 2;
+        const y =
+          (row - 1) * tileSize + tileSize / 2 - tokens[player].offsetHeight / 2;
+        tokens[player].style.transform = `translate(${x}px, ${y}px)`;
+      }
+
+      function renderSidebar() {
+        playersList.innerHTML = "";
+        players.forEach((player, i) => {
+          const div = document.createElement("div");
+          div.className = "player-info";
+          div.innerHTML = `
+          <div class="player-name">
+            <span class="player-color" style="background:${tokens[i].style.background}"></span>
+            ${player}
+          </div>
+          <div class="scores" id="scores-${i}"></div>
+        `;
+          playersList.appendChild(div);
+        });
+      }
+
+      function updateScoresDisplay(playerIndex) {
+        const div = document.getElementById(`scores-${playerIndex}`);
+        const scoreObj = scores[playerIndex];
+        let total = Object.values(scoreObj).reduce((a, b) => a + b, 0);
+        div.innerHTML =
+          Object.entries(scoreObj)
+            .map(([cat, val]) => `${cat}: ${val} correct`)
+            .join("<br>") + `<br><strong>Total: ${total}</strong>`;
+      }
+
+      function checkWinCondition(playerIndex) {
+        let total = Object.values(scores[playerIndex]).reduce(
+          (a, b) => a + b,
+          0
+        );
+        return total >= 25;
+      }
+
+      function declareWinner(playerName) {
+        winnerText.textContent = `${playerName} has won the game! 🎉`;
+        winnerPopup.classList.add("active");
+        gameOver = true;
+        rollBtn.disabled = true;
+      }
+
+      function startGame() {
+        let num = parseInt(prompt("How many players? (2-6)"));
+        if (isNaN(num) || num < 2 || num > 6) return;
+        players = [];
+        positions = Array(num).fill(0);
+        tokens.forEach((t) => t.remove());
+        tokens = [];
+        scores = Array(num)
+          .fill(0)
+          .map(() => ({}));
+
+        for (let i = 0; i < num; i++) {
+          let name = prompt(`Enter name for Player ${i + 1}`);
+          players.push(name || `Player ${i + 1}`);
+          const token = document.createElement("div");
+          token.className = "token";
+          token.style.background = getComputedStyle(
+            document.documentElement
+          ).getPropertyValue(`--player${i + 1}`);
+          board.appendChild(token);
+          tokens.push(token);
+          updateTokenPosition(i);
+        }
+        renderSidebar();
+        currentPlayer = 0;
+        rollBtn.disabled = false;
+        gameOver = false;
+      }
+
+      function rollDice() {
+        if (gameOver) return;
+        rolledNumber = 1 + Math.floor(Math.random() * 6);
+
+        positions[currentPlayer] =
+          (positions[currentPlayer] + rolledNumber) % 40;
+        updateTokenPosition(currentPlayer);
+
+        const cat =
+          categories[positions[currentPlayer] % categories.length].name;
+
+        let others = players
+          .map((p, i) => i)
+          .filter((i) => i !== currentPlayer);
+        let targetIndex = others[Math.floor(Math.random() * others.length)];
+        let targetName = players[targetIndex];
+
+        const templates = questionTemplates[cat];
+        const template =
+          templates[Math.floor(Math.random() * templates.length)];
+        const question = template.replace("{name}", targetName);
+
+        popupQuestion.textContent = `${players[currentPlayer]} rolled ${rolledNumber} → ${cat}: ${question}`;
+        showPopup();
+      }
+
+      function showPopup() {
+        popup.classList.add("active");
+        let timeLeft = 30;
+        timerEl.textContent = `Time: ${timeLeft}`;
+        timer = setInterval(() => {
+          timeLeft--;
+          timerEl.textContent = `Time: ${timeLeft}`;
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            hidePopup();
+            nextTurn();
+          }
+        }, 1000);
+      }
+
+      function hidePopup() {
+        popup.classList.remove("active");
+      }
+
+      function nextTurn() {
+        currentPlayer = (currentPlayer + 1) % players.length;
+      }
+
+      correctBtn.onclick = () => {
+        clearInterval(timer);
+        const cat =
+          categories[positions[currentPlayer] % categories.length].name;
+        scores[currentPlayer][cat] = (scores[currentPlayer][cat] || 0) + 1;
+        updateScoresDisplay(currentPlayer);
+
+        if (checkWinCondition(currentPlayer)) {
+          declareWinner(players[currentPlayer]);
+        } else {
+          hidePopup();
+          nextTurn();
+        }
+      };
+
+      wrongBtn.onclick = () => {
+        clearInterval(timer);
+        positions[currentPlayer] = Math.max(
+          0,
+          positions[currentPlayer] - rolledNumber
+        );
+        updateTokenPosition(currentPlayer);
+        hidePopup();
+        nextTurn();
+      };
+
+      startBtn.onclick = startGame;
+      rollBtn.onclick = rollDice;
+      window.onresize = () => tokens.forEach((_, i) => updateTokenPosition(i));
+
+      buildBoard();
+
+      ////////////
+      const audio = document.getElementById("bg-audio");
+      const btn = document.getElementById("play-btn");
+
+      btn.addEventListener("click", () => {
+        if (audio.paused) {
+          audio.play().catch((err) => console.log(err)); // play if paused
+          btn.textContent = "⏸️ Pause Music"; // update button text
+        } else {
+          audio.pause(); // pause if playing
+          btn.textContent = "▶️ Play Music"; // update button text
+        }
+      });
+    </script>
+  </body>
+</html>
